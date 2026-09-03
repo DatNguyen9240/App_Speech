@@ -59,16 +59,25 @@ func NewSpeechProxyHandler(cfg *config.Config) *SpeechProxyHandler {
 
 // HandleSpeechWS quản lý kết nối WebSocket 2 chiều giữa Web Client và Soniox API
 func (h *SpeechProxyHandler) HandleSpeechWS(c *gin.Context) {
-	if h.cfg.SonioxAPIKey == "" {
-		log.Println("[Lỗi] Biến môi trường SONIOX_API_KEY chưa được cấu hình!")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "SONIOX_API_KEY is not configured on server"})
-		return
-	}
-
 	// 1. Upgrade HTTP request thành kết nối WebSocket với Web Client
 	clientConn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("[Lỗi Upgrade WS Client]: %v\n", err)
+		return
+	}
+
+	if h.cfg.SonioxAPIKey == "" {
+		log.Println("[Cảnh báo] Biến môi trường SONIOX_API_KEY chưa được cấu hình!")
+		_ = clientConn.WriteJSON(gin.H{
+			"error":   "SONIOX_API_KEY_MISSING",
+			"message": "Chưa cấu hình biến môi trường SONIOX_API_KEY trên máy chủ Vercel. Vui lòng vào Vercel Dashboard > Settings > Environment Variables để cấu hình.",
+		})
+		_ = clientConn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "SONIOX_API_KEY is not configured"),
+			time.Now().Add(time.Second),
+		)
+		_ = clientConn.Close()
 		return
 	}
 

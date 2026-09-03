@@ -88,18 +88,29 @@ document.addEventListener("DOMContentLoaded", () => {
       resetSubtitleViews();
       startTimer();
 
-      // 2. Kết nối WebSocket tới Backend Go (/ws/speech)
-      await initSpeechWebSocket(myLang, partnerLang);
+      // 2. Kết nối Agora Web SDK (P2P Audio Call & DataStream) trước
+      try {
+        await initAgora(roomId, myUID);
+      } catch (agoraErr) {
+        throw new Error("Lỗi kết nối Agora: " + (agoraErr.message || agoraErr) + "\n(Vui lòng kiểm tra biến AGORA_APP_ID trên Vercel Settings)");
+      }
 
-      // 3. Khởi tạo AudioRecorder để thu âm PCM 16kHz
-      await initAudioRecorder();
-
-      // 4. Kết nối Agora Web SDK (P2P Audio Call & DataStream)
-      await initAgora(roomId, myUID);
+      // 3. Kết nối WebSocket tới Backend Go (/ws/speech) cho Soniox Speech AI
+      try {
+        await initSpeechWebSocket(myLang, partnerLang);
+        // 4. Khởi tạo AudioRecorder để thu âm PCM 16kHz
+        await initAudioRecorder();
+      } catch (wsErr) {
+        console.warn("[App] Tính năng phiên dịch Soniox chưa sẵn sàng:", wsErr);
+        partnerStatusNote.textContent = "Chưa bật dịch tự động (Thiếu SONIOX_API_KEY trên server)";
+        partnerStatusNote.classList.remove("text-emerald-400");
+        partnerStatusNote.classList.add("text-amber-400");
+        mySpeechInterim.textContent = "Thoại P2P đang hoạt động (Tính năng dịch AI tạm tắt do chưa có API key)";
+      }
 
     } catch (err) {
       console.error("[App] Lỗi khi bắt đầu cuộc gọi:", err);
-      alert("Không thể bắt đầu cuộc gọi: " + (err.message || err));
+      alert(err.message || err);
       endCall();
     } finally {
       btnStartCall.disabled = false;
@@ -138,13 +149,13 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       wsSpeech.onerror = (err) => {
-        console.error("[WS Client] Lỗi kết nối WebSocket:", err);
+        console.warn("[WS Client] Lỗi kết nối WebSocket:", err);
         setSonioxBadge(false);
-        reject(new Error("Lỗi kết nối tới dịch vụ phiên dịch"));
+        reject(new Error("Không thể kết nối WebSocket dịch thuật (Kiểm tra SONIOX_API_KEY trên server)"));
       };
 
-      wsSpeech.onclose = () => {
-        console.log("[WS Client] WebSocket đã đóng.");
+      wsSpeech.onclose = (evt) => {
+        console.log("[WS Client] WebSocket đã đóng:", evt.code, evt.reason);
         setSonioxBadge(false);
       };
     });
@@ -154,6 +165,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function handleSonioxMessage(rawJson) {
     try {
       const data = JSON.parse(rawJson);
+      if (data.error === "SONIOX_API_KEY_MISSING") {
+        console.warn("[Soniox]:", data.message);
+        partnerStatusNote.textContent = "Thiếu SONIOX_API_KEY trên server";
+        partnerStatusNote.classList.remove("text-emerald-400");
+        partnerStatusNote.classList.add("text-amber-400");
+        mySpeechInterim.textContent = "Chưa cấu hình SONIOX_API_KEY trên Vercel (Tính năng dịch AI tạm tắt)";
+        return;
+      }
+
       if (data.error || data.error_code) {
         console.warn("[Soniox Warning]:", data.error || data.error_code);
         return;

@@ -20,10 +20,15 @@ class AgoraCallManager {
   async fetchToken(channelName, uid) {
     try {
       const response = await fetch(`/api/token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`);
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (e) {}
+
       if (!response.ok) {
-        throw new Error(`Server trả về mã lỗi: ${response.status}`);
+        const errorDetail = data.details || data.error || `Server trả về mã lỗi: ${response.status}`;
+        throw new Error(errorDetail);
       }
-      const data = await response.json();
       return data;
     } catch (err) {
       console.error("[AgoraCallManager] Không thể lấy token từ backend:", err);
