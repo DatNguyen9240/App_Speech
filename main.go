@@ -1,7 +1,9 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +13,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed web/*
+var embeddedWebFS embed.FS
 
 // CORSMiddleware cấu hình Header CORS cho phép trình duyệt di động và web client kết nối
 func CORSMiddleware() gin.HandlerFunc {
@@ -63,11 +68,28 @@ func main() {
 	// WebSocket Endpoint chuyển tiếp âm thanh sang Soniox
 	r.GET("/ws/speech", speechProxyHandler.HandleSpeechWS)
 
-	// Phục vụ giao diện Web tĩnh từ thư mục ./web
-	if _, err := os.Stat("./web"); err == nil {
-		r.Static("/static", "./web")
-		r.StaticFile("/", "./web/index.html")
+	// Đọc sẵn index.html từ embedded filesystem vào RAM để phục vụ trực tiếp (tránh mã chuyển hướng 301 của http.ServeFile)
+	indexHTML, err := embeddedWebFS.ReadFile("web/index.html")
+	if err != nil {
+		log.Fatalf("Không thể đọc web/index.html từ embed: %v", err)
 	}
+
+	webSubFS, err := fs.Sub(embeddedWebFS, "web")
+	if err == nil {
+		r.StaticFS("/static", http.FS(webSubFS))
+	} else {
+		log.Printf("⚠️ Lỗi khởi tạo web static filesystem: %v", err)
+	}
+
+	serveIndex := func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
+	}
+	r.GET("/", serveIndex)
+	r.GET("/index.html", serveIndex)
+
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
 
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("================================================================")
