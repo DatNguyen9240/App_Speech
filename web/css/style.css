@@ -1,0 +1,123 @@
+/* Custom Styles & Glassmorphism for Realtime Speech Call */
+
+:root {
+  --primary-glow: rgba(99, 102, 241, 0.35);
+  --accent-glow: rgba(168, 85, 247, 0.3);
+  --success-glow: rgba(34, 197, 94, 0.4);
+  --danger-glow: rgba(239, 68, 68, 0.4);
+}
+
+/* Tối ưu hóa vùng an toàn cho màn hình tai thỏ / Dynamic Island (iPhone) */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Hiệu ứng Glassmorphism */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card-active {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+/* Thanh điều khiển đáy cố định */
+.bottom-control-bar {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* Sóng âm thanh động khi đang nói */
+.sound-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+}
+
+.sound-wave span {
+  display: inline-block;
+  width: 3px;
+  height: 100%;
+  border-radius: 9999px;
+  background: #6366f1;
+  animation: wave 1.2s ease-in-out infinite;
+}
+
+.sound-wave span:nth-child(1) { animation-delay: 0.0s; height: 30%; }
+.sound-wave span:nth-child(2) { animation-delay: 0.2s; height: 70%; }
+.sound-wave span:nth-child(3) { animation-delay: 0.4s; height: 100%; }
+.sound-wave span:nth-child(4) { animation-delay: 0.1s; height: 50%; }
+.sound-wave span:nth-child(5) { animation-delay: 0.3s; height: 80%; }
+
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Hiệu ứng pulse cho chấm kết nối */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.status-active-pulse {
+  animation: pulse-ring 2s infinite;
+}
+
+/* Thanh cuộn mượt cho khung phụ đề */
+.subtitle-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.subtitle-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.subtitle-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* Chữ nhấp nháy khi đang dịch tạm thời (interim transcript) */
+.interim-text {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.final-text {
+  color: #f8fafc;
+  font-weight: 500;
+}
